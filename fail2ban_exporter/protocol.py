@@ -38,6 +38,7 @@ class F2BResponse(F2BMessage):
 class F2BJail:
     def __init__(
         self,
+        name: str,
         currently_failed: int,
         total_failed: int,
         currently_banned: int,
@@ -45,6 +46,7 @@ class F2BJail:
         filter_file_list: list[str],
         banned_ips: list[str],
     ) -> Self:
+        self.name = name
         self.currently_failed = currently_failed
         self.total_failed = total_failed
         self.currently_banned = currently_banned

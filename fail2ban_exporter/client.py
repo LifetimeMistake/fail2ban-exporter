@@ -1,11 +1,12 @@
 import logging
 from typing import Optional, Self
+from fail2ban_exporter.constants import F2B_SOCKET_URI
 from fail2ban_exporter.protocol import F2BRequest, F2BResponse, F2BJail
 from fail2ban_exporter.socket import F2BSocket
 
 class F2BClient:
-    def __init__(self, host: str) -> Self:
-        self._host = host
+    def __init__(self, host: Optional[str] = None) -> Self:
+        self._host = host or F2B_SOCKET_URI
         self._socket = None
         self.__open_socket()
         self._logger = logging.getLogger()
@@ -15,7 +16,7 @@ class F2BClient:
             try:
                 self._socket.close()
             except Exception as e:
-                self._logger.error(f"Failed to gracefully close old socket: {e}")
+                self._logger.error("Failed to gracefully close old socket", exc_info=e)
                 
         self._socket = F2BSocket(self._host)
         
@@ -23,7 +24,7 @@ class F2BClient:
         try:
             return self._socket.read()
         except Exception as e:
-            self._logger.warn(f"Failed to read data: {e}")
+            self._logger.warn("Failed to read data", exc_info=e)
             # try again
             self.__open_socket()
             return self.__read()
@@ -32,7 +33,7 @@ class F2BClient:
         try:
             self._socket.write(data)
         except Exception as e:
-            self._logger.warn(f"Failed to write data: {e}")
+            self._logger.warn("Failed to write data", exc_info=e)
             # try again
             self.__open_socket()
             self.__write(data)
@@ -62,6 +63,7 @@ class F2BClient:
         F2BClient.__assert_response_ok(response)
         filter_data, action_data = response.data[0][1], response.data[1][1]
         jail = F2BJail(
+            name=jail_name,
             currently_failed=filter_data[0][1],
             total_failed=filter_data[1][1],
             filter_file_list=list(filter_data[2][1]),
