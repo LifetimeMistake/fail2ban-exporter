@@ -1,4 +1,4 @@
-from prometheus_client import start_http_server, Gauge
+from prometheus_client import Counter, start_http_server, Gauge
 from fail2ban_exporter.ipapi import HostData
 
 class Metrics:
@@ -9,6 +9,7 @@ class Metrics:
         self._currently_banned = Gauge("f2b_currently_banned", "The number of IP addresses that were banned since the start of Fail2Ban", labelnames=["jail"])
         self._banned_total = Gauge("f2b_banned_total", "Total number of IP addresses that are banned", labelnames=["jail"])
         self._attackers = Gauge("f2b_current_attackers", "Currently known attackers", labelnames=["ip_address", "country", "region", "city", "isp", "lat", "lon", "mobile", "proxy", "hosting"])
+        self._exporter_errors = Counter("f2b_exporter_errors", "The number of errors encountered since the exporter started")
         self._known_attackers = {}
         
     def start_server(self, port: int, host: str = "0.0.0.0"):
@@ -49,3 +50,6 @@ class Metrics:
         
         self._attackers.remove(labels)
         del self._known_attackers[ip_address]
+        
+    def report_error(self):
+        self._exporter_errors.inc()
