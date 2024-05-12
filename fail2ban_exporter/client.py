@@ -55,6 +55,9 @@ class F2BClient:
     def get_jail_names(self) -> list[str]:
         response = self.__write_read(F2BRequest(["status"]))
         F2BClient.__assert_response_ok(response)
+        if response.data[0][1] == 0:
+            return []
+        
         jails = list(response.data[1][1:])
         return jails
 
