@@ -17,7 +17,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", 9090))
 
-formatter = logging.Formatter('%(asctime)s [%(name)s] [%(levelname)s] %(message)s')
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 logger = logging.getLogger()
