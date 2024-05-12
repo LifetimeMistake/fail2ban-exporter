@@ -58,7 +58,8 @@ class F2BClient:
         if response.data[0][1] == 0:
             return []
         
-        jails = list(response.data[1][1:])
+        # weird
+        jails = [x.strip() for x in response.data[1][1].split(",")]
         return jails
 
     def get_jail_details(self, jail_name: str) -> F2BJail:
