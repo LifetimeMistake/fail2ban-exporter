@@ -2,7 +2,7 @@ import logging
 from typing import Optional, Self
 from fail2ban_exporter.constants import F2B_SOCKET_URI
 from fail2ban_exporter.protocol import F2BRequest, F2BResponse, F2BJail
-from fail2ban_exporter.socket import F2BSocket
+from fail2ban_exporter.csocket import F2BSocket
 
 class F2BClient:
     def __init__(self, host: Optional[str] = None) -> Self:
