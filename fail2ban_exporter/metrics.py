@@ -38,17 +38,17 @@ class Metrics:
         
         old_labels = self._known_attackers.get(attacker.host)
         if old_labels:
-            self._attackers.remove(old_labels)
+            self._attackers.remove(*old_labels)
         
         self._known_attackers[attacker.host] = labels
-        self._attackers.labels(labels).set(1)
+        self._attackers.labels(*labels).set(1)
     
     def remove_attacker(self, ip_address: str) -> bool:
         labels = self._known_attackers.get(ip_address)
         if not labels:
             return False
         
-        self._attackers.remove(labels)
+        self._attackers.remove(*labels)
         del self._known_attackers[ip_address]
         
     def report_error(self):
