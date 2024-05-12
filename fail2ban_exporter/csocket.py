@@ -34,7 +34,6 @@ class F2BSocket:
         
     def __serialize_req(self, message: F2BRequest) -> bytes:
         buffer = list(map(convert_types, message.to_obj()))
-        print(buffer)
         return pickle.dumps(buffer, pickle.HIGHEST_PROTOCOL) + PROTO_END_MSG
 
     def __deserialize_res(self, data: bytes) -> F2BResponse:
@@ -48,7 +47,6 @@ class F2BSocket:
         elif len(result) > 2:
             arg = result[1:]
             
-        print(result)
         return F2BResponse(status_code, arg)
         
     def read(self) -> F2BResponse:
