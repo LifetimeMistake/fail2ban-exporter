@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import time
+import requests
 
 from fail2ban_exporter.client import F2BClient
 from fail2ban_exporter.ipapi import IPAPI, HostData, QueryResult
@@ -16,6 +17,7 @@ IPAPI_BATCH_SIZE = os.getenv("IPAPI_BATCH_SIZE")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 APP_HOST = os.getenv("APP_HOST", "0.0.0.0")
 APP_PORT = int(os.getenv("APP_PORT", 9090))
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", None)
 
 formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 console_handler = logging.StreamHandler()
@@ -29,6 +31,24 @@ client = F2BClient(F2B_SOCKET_URI)
 
 known_jails = {}
 known_attackers = {}
+
+def post(content: str):
+    try:
+        headers = {
+            "User-Agent": "fail2ban-exporter",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            'content': content,
+        }
+
+        response = requests.post(WEBHOOK_URL, headers=headers, json=data)
+
+        if response.status_code != 200 and response.status_code != 204:
+            raise Exception(f"Request failed with status code {response.status_code}: {response.text}")
+    except Exception as e:
+        logger.error("Failed to push webhook message", exc_info=e)
 
 def report_error():
     try:
@@ -80,7 +100,19 @@ def perform_update():
         if current_time - timestamp > ATTACKER_DATA_REFRESH_INTERVAL:
             outdated_attackers.append(ip_address)
             
-    for response in api.query(list(set(outdated_attackers) | new_attackers)):
+    query_result = api.query(list(set(outdated_attackers) | new_attackers))
+    num_results = len(query_result)
+    if WEBHOOK_URL and num_results > 3:
+        attackers_list = [x.host for x in query_result] if num_results < 10 else [*[x.host for x in query_result[:10]], f"... ({num_results-10} more)"]
+        lines = [
+            f'Discovered {num_results} new attackers:',
+            '```',
+            *attackers_list,
+            '```',
+        ]
+        post('\n'.join(lines))
+    
+    for response in query_result:
         if response.status == QueryResult.Fail:
             logger.warning(f"Failed to get data for attacker '{response.host}': {response.error_message}")
             continue
@@ -94,6 +126,21 @@ def perform_update():
             logger.error(f"Failed to add/update attacker '{response.host}'", exc_info=e)
             report_error()
             
+        if WEBHOOK_URL and num_results <= 3:
+            attacker_str = f"{host.host} ({host.fields['country']}, {host.fields['regionName']}, {host.fields['city']}, {host.fields['zip']})"
+            post(f"New attacker discovered: {attacker_str}")
+       
+    num_results = len(forgiven_attackers)
+    if WEBHOOK_URL and num_results > 3:
+        attackers_list = [x.host for x in forgiven_attackers] if num_results < 10 else [*[x.host for x in forgiven_attackers[:10]], f"... ({num_results-10} more)"]
+        lines = [
+            f'Forgiven {num_results} attackers:',
+            '```',
+            *attackers_list,
+            '```',
+        ]
+        post('\n'.join(lines))
+            
     for ip_address in forgiven_attackers:
         try:
             metrics.remove_attacker(ip_address)
@@ -102,6 +149,9 @@ def perform_update():
         except Exception as e:
             logger.error(f"Failed to remove forgiven attacker: '{ip_address}'", exc_info=e)        
             report_error()
+            
+        if WEBHOOK_URL and num_results <= 3:
+            post(f"Attacker forgiven: {ip_address}")
     
     logger.info(f"{len(new_attackers)} new attacker(s), {len(outdated_attackers)} updated, {len(forgiven_attackers)} forgiven")
     
