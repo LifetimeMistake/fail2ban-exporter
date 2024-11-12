@@ -80,7 +80,7 @@ def perform_update():
             report_error()
             continue
         
-    current_attackers = set()
+    current_attackers_set = set()
     known_attackers_set = set(known_attackers)
     for jail_name in set(known_jails) | set(jail_names):
         if jail_name not in jail_names:
@@ -89,10 +89,10 @@ def perform_update():
             continue
         
         # Add the contents of the jail
-        current_attackers.update(known_jails[jail_name])
+        current_attackers_set.update(known_jails[jail_name])
         
-    new_attackers = current_attackers - known_attackers_set
-    forgiven_attackers = known_attackers_set - current_attackers
+    new_attackers_set = current_attackers_set - known_attackers_set
+    forgiven_attackers = list(known_attackers_set - current_attackers_set)
     outdated_attackers = []
     current_time = int(datetime.datetime.now(datetime.UTC).timestamp())
     
@@ -100,7 +100,7 @@ def perform_update():
         if current_time - timestamp > ATTACKER_DATA_REFRESH_INTERVAL:
             outdated_attackers.append(ip_address)
             
-    query_result = api.query(list(set(outdated_attackers) | new_attackers))
+    query_result = api.query(list(set(outdated_attackers) | new_attackers_set))
     num_results = len(query_result)
     if WEBHOOK_URL and num_results > 3:
         attackers_list = [x.host for x in query_result] if num_results < 10 else [*[x.host for x in query_result[:10]], f"... ({num_results-10} more)"]
@@ -153,7 +153,7 @@ def perform_update():
         if WEBHOOK_URL and num_results <= 3:
             post(f"Attacker forgiven: {ip_address}")
     
-    logger.info(f"{len(new_attackers)} new attacker(s), {len(outdated_attackers)} updated, {len(forgiven_attackers)} forgiven")
+    logger.info(f"{len(new_attackers_set)} new attacker(s), {len(outdated_attackers)} updated, {len(forgiven_attackers)} forgiven")
     
 def main():
     logger.info(f"Performing first update in {SCRAPE_INTERVAL_SECONDS} seconds")
